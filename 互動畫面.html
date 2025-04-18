@@ -453,10 +453,10 @@
       <label>主題顏色</label>
       <div class="theme-selector">
         <div class="theme-btn active" style="background: #00ffff;" data-theme="cyber"></div>
-        <div class="theme-btn" style="background: #ff00ff;" data-theme="neon"></div>
-        <div class="theme-btn" style="background: #00ff88;" data-theme="matrix"></div>
-        <div class="theme-btn" style="background: #ff6600;" data-theme="fire"></div>
-        <div class="theme-btn" style="background: #3366ff;" data-theme="ocean"></div>
+        <div class="theme-btn" style="background: #ff66ff;" data-theme="neon"></div>
+        <div class="theme-btn" style="background: #33ff99;" data-theme="matrix"></div>
+        <div class="theme-btn" style="background: #ff9646;" data-theme="fire"></div>
+        <div class="theme-btn" style="background: #ffffff;" data-theme="ocean"></div>
       </div>
     </div>
   </div>
@@ -485,15 +485,11 @@
     </div>
   </div>
   
-  <div class="instructions">
-    點擊畫面切換模式 | 拖動滑塊調整參數 | ESC退出全屏
-  </div>
-  
   <script>
     // 全局變量
     let particles = [];
     let fft, sound;
-    let inputText = "Music";
+    let inputText = "點擊螢幕切換吸引/排斥";
     let textSizeValue = 64;
     let speedFactor = 0.05;
     let explosions = [];
@@ -520,25 +516,25 @@
         textGlow: "0 0 10px rgba(0, 255, 255, 0.7)"
       },
       neon: {
-        primary: "#ff00ff",
+        primary: "#ff66ff",
         secondary: "#ff00aa",
         bg: "#110011",
         textGlow: "0 0 10px rgba(255, 0, 255, 0.7)"
       },
       matrix: {
-        primary: "#00ff88",
+        primary: "#33ff99",
         secondary: "#00ff00",
         bg: "#001100",
         textGlow: "0 0 10px rgba(0, 255, 136, 0.7)"
       },
       fire: {
-        primary: "#ff6600",
+        primary: "#ff9646",
         secondary: "#ff3300",
         bg: "#110000",
         textGlow: "0 0 10px rgba(255, 102, 0, 0.7)"
       },
       ocean: {
-        primary: "#3366ff",
+        primary: "#ffffff",
         secondary: "#00ccff",
         bg: "#000033",
         textGlow: "0 0 10px rgba(51, 102, 255, 0.7)"
@@ -748,8 +744,7 @@
       for (let i = 0; i < spectrum.length; i += 10) {
         let amp = spectrum[i];
         let y = map(amp, 0, 255, height, height - 200);
-        let hue = map(i, 0, spectrum.length, 160, 220);
-        fill(hue, 100, 100, 0.7);
+        fill(themes[theme].primary);
         rect(i * 2, y, 8, height - y);
       }
       
