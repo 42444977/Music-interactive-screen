@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cyber Field Visualizer Pro</title>
+  <title>Music-interactive-screen</title>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -45,8 +45,42 @@
     .control-panel.collapsed {
       width: 40px;
       height: 40px;
-      padding: 5px;
+      padding: 0;
       overflow: hidden;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+    }
+    
+    /* 確保收縮時控制組完全隱藏 */
+    .control-panel.collapsed .control-group {
+      display: none;
+    }
+    
+    /* 調整≡按鈕的位置 */
+    .toggle-panel {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 40px;
+      height: 40px;
+      background: var(--control-bg);
+      border: var(--control-border);
+      border-radius: 4px;
+      color: var(--primary-color);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 101;
+    }
+    
+    /* 收縮時≡按鈕的樣式 */
+    .control-panel.collapsed .toggle-panel {
+      position: static;
+      margin: 0;
+      top: 0;
+      right: 0;
     }
     
     .control-group {
@@ -123,6 +157,7 @@
       background: var(--control-bg);
       border-radius: 4px;
       -webkit-appearance: none;
+      appearance: none;
     }
     
     input[type="range"]::-webkit-slider-thumb {
@@ -353,7 +388,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/addons/p5.sound.min.js"></script>
 </head>
 <body>
-  <div class="visualizer-title">CYBER FIELD VISUALIZER PRO</div>
+  <div class="visualizer-title">Music-interactive-screen</div>
   
   <div class="control-panel" id="controlPanel">
     <div class="toggle-panel" id="togglePanel">≡</div>
@@ -410,6 +445,11 @@
     </div>
     
     <div class="control-group">
+      <label for="particleSize">粒子大小: <span id="particleSizeValue">4</span></label>
+      <input type="range" id="particleSize" min="1" max="20" step="1" value="4" />
+    </div>
+    
+    <div class="control-group">
       <label>主題顏色</label>
       <div class="theme-selector">
         <div class="theme-btn active" style="background: #00ffff;" data-theme="cyber"></div>
@@ -453,7 +493,7 @@
     // 全局變量
     let particles = [];
     let fft, sound;
-    let inputText = "CYBER FIELD";
+    let inputText = "Music";
     let textSizeValue = 64;
     let speedFactor = 0.05;
     let explosions = [];
@@ -571,6 +611,24 @@
       document.getElementById("nextBtn").addEventListener("click", playNext);
       document.getElementById("progressBar").addEventListener("click", seekAudio);
       
+      // 添加鍵盤事件監聽器
+      document.addEventListener('keydown', function(e) {
+      if (e.code === 'Space') {
+        e.preventDefault(); // 防止空白鍵觸發頁面滾動
+        togglePlayPause(); // 執行播放/暫停功能
+      }
+    });
+
+        document.getElementById("particleSize").addEventListener("input", function (e) {
+      const newSize = parseInt(e.target.value, 10);
+      document.getElementById("particleSizeValue").textContent = newSize;
+    
+      // 更新所有粒子的大小
+      particles.forEach(p => {
+        p.size = newSize;
+      });
+    });
+
       // 應用默認主題
       applyTheme();
     }
@@ -584,6 +642,7 @@
     }
 
     function createParticles(count) {
+      const particleSize = parseInt(document.getElementById("particleSize").value, 10); // 確保使用滑桿的值
       particles = [];
       for (let i = 0; i < count; i++) {
         const hue = map(i, 0, count, 160, 220);
@@ -592,7 +651,7 @@
           y: random(height),
           vx: random(-1, 1),
           vy: random(-1, 1),
-          size: random(1, 4),
+          size: particleSize,
           tail: [],
           hue: hue,
           shape: particleShape === "mixed" ? 
@@ -668,6 +727,8 @@
             let p2 = particles[j];
             let d2 = dist(p.x, p.y, p2.x, p2.y);
             if (d2 < 80) {
+              let lineWeight = map(p.size, 1, 20, 0.5, 5); // 根據粒子大小調整線條粗細
+              strokeWeight(lineWeight);
               stroke(p.hue, 80, 100, map(d2, 0, 80, 0.8, 0));
               line(p.x, p.y, p2.x, p2.y);
               noStroke();
@@ -679,7 +740,7 @@
       // 繪製中央文字
       textAlign(CENTER, CENTER);
       textSize(textSizeValue + avgBass * 0.2);
-      fill(colorFromHex(themes[theme].primary));
+      fill(themes[theme].primary);
       text(inputText, width / 2, height / 2);
       
       // 繪製頻譜
