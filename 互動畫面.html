@@ -9,6 +9,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@700&display=swap" rel="stylesheet">
 
   <style>
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover, 
+    input:-webkit-autofill:focus {
+      -webkit-text-fill-color: var(--primary-color);
+      -webkit-box-shadow: 0 0 0px 1000px var(--control-bg) inset;
+      transition: background-color 5000s ease-in-out 0s;
+    }
+
     :root {
       --primary-color: #00ffff;
       --secondary-color: #00ffb3;
@@ -645,6 +653,8 @@
         } else {
           showSpecialMessage = false; // 關閉特殊訊息
         }
+        // 新增：每次輸入時清除可能儲存的歷史值
+        //e.target.value = inputText; 
       });
 
       document.getElementById("particleSpeed").addEventListener("input", function (e) {
@@ -666,6 +676,10 @@
       document.getElementById("behaviorMode").addEventListener("change", function(e) {
         behaviorMode = e.target.value;
         if (behaviorMode === "attract") attract = true;
+      });
+
+      document.getElementById("behaviorMode").addEventListener("focus", function() {
+        this.blur(); // 防止顯示歷史記錄
       });
       
       document.getElementById("particleShape").addEventListener("change", function(e) {
@@ -804,25 +818,84 @@
       let avgBass = bassHistory.reduce((a, b) => a + b, 0) / bassHistory.length;
 
       if (showSpecialMessage) {
-
-        // 繪製大愛心作為背景
-        noStroke();
-        fill("#ff66ff"); 
-        drawHeart(width / 2, height / 2, height/40);
-        drawHeart(width / 6, height / 5, height/80); // 根據畫布大小調整愛心大小
-        drawHeart(width / 6, height-height / 5, height/80)
-        drawHeart(width-width / 6, height / 5, height/80)
-        drawHeart(width-width / 6, height-height / 5, height/80)
-    
+        // 創建浪漫的粉色背景漸變
+        for (let i = 0; i < height; i += 2) {
+          let inter = map(i, 0, height, 0, 1);
+          let c1 = color('#FF64C8'); // 深粉色
+          let c2 = color('#FFB6E6'); // 淺粉色
+          let c = lerpColor(c1, c2, inter);
+          stroke(c);
+          line(0, i, width, i);
+        }
+        
+        // 繪製飄動的愛心粒子
+        for (let i = 0; i < particles.length; i++) {
+          let p = particles[i];
+          p.x += random(-1, 1);
+          p.y += random(-1, 1);
+          
+          // 讓愛心隨音樂跳動
+          let size = p.size + bass * 0.05;
+          
+          // 繪製閃爍的愛心
+          let alpha = 100 + sin(frameCount * 0.1 + i) * 100;
+          fill('#FF64C8');
+          drawingContext.globalAlpha = alpha/100;
+          drawHeart(p.x, p.y, size/15);
+          drawingContext.globalAlpha = 1;
+          
+          // 繪製愛心的光暈
+          drawingContext.shadowBlur = 20;
+          drawingContext.shadowColor = '#FF64C880'; // 帶透明度
+          drawHeart(p.x, p.y, size/20);
+          drawingContext.shadowBlur = 0;
+        }
+        
+        // 繪製中央大愛心
+        let pulseSize = sin(frameCount * 0.05) * 5 + 20;
+        drawingContext.shadowBlur = 50;
+        drawingContext.shadowColor = '#FF64C880'; // 帶透明度
+        fill('#FF64C8');
+        drawHeart(width / 2, height / 2 - 30, pulseSize);
+        drawingContext.shadowBlur = 0;
+        
         // 繪製文字
         textAlign(CENTER, CENTER);
-        textSize(64);
+        textSize(64 + sin(frameCount * 0.1) * 5);
         textFont("Dancing Script");
-        fill(0,0,0); 
-        text("william love liuliu", width / 2, height / 2 +70);
+        fill('#FFFFFF');
+        drawingContext.shadowBlur = 15;
+        drawingContext.shadowColor = '#FF64C8';
+        text("william love liuliu", width / 2, height / 2 + 70);
+        
+        textSize(48 + sin(frameCount * 0.1 + 2) * 3);
         textFont("Noto Sans TC");
-        text("彥霖愛柳柳", width / 2, height / 2 -30);
-    
+        text("彥霖愛柳柳", width / 2, height / 2 - 30);
+        
+        // 繪製周圍的小愛心
+        for (let i = 0; i < 8; i++) {
+          let angle = frameCount * 0.02 + i * PI/4;
+          let x = width/2 + cos(angle) * 200;
+          let y = height/2 + sin(angle) * 200;
+          let size = 10 + sin(frameCount * 0.1 + i) * 5;
+          fill('#FF64C8');
+          drawingContext.globalAlpha = 0.8;
+          drawHeart(x, y, size/10);
+          drawingContext.globalAlpha = 1;
+        }
+        
+        // 繪製飄落的愛心
+        for (let i = 0; i < 10; i++) {
+          let x = (frameCount * 2 + i * 100) % (width + 100) - 50;
+          let y = (frameCount * 3 + i * 150) % (height + 100);
+          let size = 8 + sin(frameCount * 0.05 + i) * 3;
+          fill('#FF64C8');
+          drawingContext.globalAlpha = 0.6;
+          drawHeart(x, y, size/10);
+          drawingContext.globalAlpha = 1;
+        }
+        
+        drawingContext.shadowBlur = 0;
         return; // 跳過其他繪製邏輯
       }
 
@@ -1234,6 +1307,10 @@
         playlistItems.appendChild(item);
       });
     }
+
+    document.getElementById('upload').addEventListener('click', function() {
+      this.value = ""; // 清除可能儲存的文件路徑
+    });
 
     document.getElementById('upload').addEventListener('change', function(e) {
       // 停止當前播放
