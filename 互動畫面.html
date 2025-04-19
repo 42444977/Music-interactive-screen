@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Music-interactive-screen</title>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@700&display=swap" rel="stylesheet">
+
   <style>
     :root {
       --primary-color: #00ffff;
@@ -142,6 +145,12 @@
     
     input[type="text"]:focus,
     input[type="number"]:focus,
+
+    select option {
+      background: #000; /* 選項背景色 */
+      color: var(--primary-color); /* 選項文字顏色 */
+    }
+
     select:focus {
       outline: none;
       border-color: var(--primary-color);
@@ -454,6 +463,7 @@
         <option value="square">方形</option>
         <option value="triangle">三角形</option>
         <option value="star">星形</option>
+        <option value="heart">愛心</option>
         <option value="mixed">混合</option>
       </select>
     </div>
@@ -564,6 +574,7 @@
     let seekInterval;
     let visualizationMode = "bars"; // 默認為條形圖
     let eq;
+    let showSpecialMessage = false; 
     
     // 播放列表相關變量
     let playlist = [];
@@ -625,6 +636,15 @@
         let vol = parseFloat(e.target.value) / 100;
         document.getElementById("volumeValue").textContent = e.target.value;
         if (sound) sound.setVolume(vol);
+      });
+
+      document.getElementById("textInput").addEventListener("input", function (e) {
+        inputText = e.target.value || " ";
+        if (inputText === "11220620") {
+          showSpecialMessage = true; // 啟用特殊訊息
+        } else {
+          showSpecialMessage = false; // 關閉特殊訊息
+        }
       });
 
       document.getElementById("particleSpeed").addEventListener("input", function (e) {
@@ -782,6 +802,29 @@
         bassHistory.shift();
       }
       let avgBass = bassHistory.reduce((a, b) => a + b, 0) / bassHistory.length;
+
+      if (showSpecialMessage) {
+
+        // 繪製大愛心作為背景
+        noStroke();
+        fill("#ff66ff"); 
+        drawHeart(width / 2, height / 2, height/40);
+        drawHeart(width / 6, height / 5, height/80); // 根據畫布大小調整愛心大小
+        drawHeart(width / 6, height-height / 5, height/80)
+        drawHeart(width-width / 6, height / 5, height/80)
+        drawHeart(width-width / 6, height-height / 5, height/80)
+    
+        // 繪製文字
+        textAlign(CENTER, CENTER);
+        textSize(64);
+        textFont("Dancing Script");
+        fill(0,0,0); 
+        text("william love liuliu", width / 2, height / 2 +70);
+        textFont("Noto Sans TC");
+        text("彥霖愛柳柳", width / 2, height / 2 -30);
+    
+        return; // 跳過其他繪製邏輯
+      }
 
       // 更新粒子
       for (let i = 0; i < particles.length; i++) {
@@ -998,6 +1041,9 @@
         case "star":
           drawStar(x, y, 5, size/2, size/4);
           break;
+        case "heart":
+          drawHeart(x, y, size/20);
+          break;
       }
     }
     
@@ -1014,6 +1060,20 @@
         vertex(sx, sy);
       }
       endShape(CLOSE);
+    }
+
+    function drawHeart(x, y, size) {
+      push();
+      translate(x, y);
+      beginShape();
+      for (let t = 0; t < TWO_PI; t += 0.1) {
+        let r = size;
+        let x = r * 16 * pow(sin(t), 3);
+        let y = -r * (13 * cos(t) - 5 * cos(2 * t) - 2 * cos(3 * t) - cos(4 * t));
+        vertex(x, y);
+      }
+      endShape(CLOSE);
+      pop();
     }
     
     function colorFromHex(hex) {
