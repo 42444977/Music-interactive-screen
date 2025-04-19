@@ -22,10 +22,17 @@
       background-color: var(--bg-color);
       font-family: 'Orbitron', sans-serif;
       color: var(--primary-color);
+      
     }
     
     canvas {
       display: block;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1; /* 確保畫布在其他元素下方 */
     }
     
     .control-panel {
@@ -39,7 +46,24 @@
       border: var(--control-border);
       box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
       width: 280px;
+      height: 85vh; /* 設置固定高度 */
+      overflow-y: auto; /* 啟用垂直滾動條 */
       transition: all 0.3s ease;
+    }
+
+    /* 自訂滾動條樣式 */
+    .control-panel::-webkit-scrollbar {
+      width: 3px;
+    }
+
+    .control-panel::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 3px;
+    }
+
+    .control-panel::-webkit-scrollbar-thumb {
+      background: var(--primary-color);
+      border-radius: 3px;
     }
     
     .control-panel.collapsed {
@@ -50,6 +74,7 @@
       background: transparent;
       border: none;
       box-shadow: none;
+      transform: translateX(0);
     }
     
     /* 確保收縮時控制組完全隱藏 */
@@ -105,7 +130,7 @@
     input[type="number"],
     input[type="file"],
     select {
-      width: 100%;
+      width: 95%;
       padding: 8px;
       background: var(--control-bg);
       border: var(--control-border);
@@ -352,7 +377,11 @@
     }
     
     .playlist-item:hover {
-      background: rgba(0, 255, 255, 0.1);
+      background: rgba(0, 255, 255, 0.3);
+      overflow: visible;
+      white-space: normal;
+      font-size: 14px;
+      transition: all 0.1s;
     }
     
     .playlist-item.active {
@@ -435,8 +464,8 @@
     </div>
     
     <div class="control-group">
-      <label for="speedInput">速度: <span id="speedValue">5</span>%</label>
-      <input type="range" id="speedInput" min="0" max="200" step="1" value="5" />
+      <label for="particleSpeed">粒子速度: <span id="particleSpeedValue">5</span>%</label>
+      <input type="range" id="particleSpeed" min="0" max="200" step="1" value="5" />
     </div>
     
     <div class="control-group">
@@ -448,7 +477,16 @@
       <label for="particleSize">粒子大小: <span id="particleSizeValue">4</span></label>
       <input type="range" id="particleSize" min="1" max="20" step="1" value="4" />
     </div>
-    
+
+    <div class="control-group">
+      <label for="visualizationMode">可視化模式</label>
+      <select id="visualizationMode">
+        <option value="bars">條形圖</option>
+        <option value="circle">圓形頻譜</option>
+        <option value="waveform">波形</option>
+      </select>
+    </div>
+
     <div class="control-group">
       <label>主題顏色</label>
       <div class="theme-selector">
@@ -459,7 +497,29 @@
         <div class="theme-btn" style="background: #ffffff;" data-theme="ocean"></div>
       </div>
     </div>
+
+    <div class="control-group">
+      <label for="bassGain">低音增益: <span id="bassGainValue">0</span></label>
+      <input type="range" id="bassGain" min="-40" max="40" step="1" value="0" />
+    </div>
+    <div class="control-group">
+      <label for="midGain">中音增益: <span id="midGainValue">0</span></label>
+      <input type="range" id="midGain" min="-40" max="40" step="1" value="0" />
+    </div>
+    <div class="control-group">
+      <label for="trebleGain">高音增益: <span id="trebleGainValue">0</span></label>
+      <input type="range" id="trebleGain" min="-40" max="40" step="1" value="0" />
+    </div>
+
+    <div class="control-group">
+      <button id="resetGainBtn" style="padding: 10px; background: var(--control-bg); border: var(--control-border); border-radius: 4px; color: var(--primary-color); cursor: pointer;">
+        重製增益
+      </button>
+    </div>
+
   </div>
+
+  
   
   <div class="fullscreen-btn" id="fullscreenBtn">⤢</div>
   
@@ -502,6 +562,8 @@
     let theme = "cyber";
     let isPlaying = false;
     let seekInterval;
+    let visualizationMode = "bars"; // 默認為條形圖
+    let eq;
     
     // 播放列表相關變量
     let playlist = [];
@@ -543,8 +605,12 @@
 
     function setup() {
       createCanvas(windowWidth, windowHeight);
+      pixelDensity(1)
       noStroke();
+      rectMode(CORNER);
       fft = new p5.FFT();
+      eq = new p5.EQ(3); // 創建一個 3 頻段的均衡器（低音、中音、高音）
+      fft.setInput(eq); // 將均衡器連接到 FFT 分析器
       colorMode(HSB, 360, 100, 100, 1);
 
       // 初始化粒子
@@ -561,9 +627,9 @@
         if (sound) sound.setVolume(vol);
       });
 
-      document.getElementById("speedInput").addEventListener("input", function(e) {
-        speedFactor = parseFloat(e.target.value) / 100;
-        document.getElementById("speedValue").textContent = e.target.value;
+      document.getElementById("particleSpeed").addEventListener("input", function (e) {
+        speedFactor = parseFloat(e.target.value) / 100; // 更新粒子速度因子
+        document.getElementById("particleSpeedValue").textContent = e.target.value; // 更新顯示的值
       });
 
       document.getElementById("particleInput").addEventListener("input", function(e) {
@@ -584,6 +650,10 @@
       
       document.getElementById("particleShape").addEventListener("change", function(e) {
         particleShape = e.target.value;
+      });
+      
+      document.getElementById("visualizationMode").addEventListener("change", function(e) {
+        visualizationMode = e.target.value;
       });
       
       document.querySelectorAll(".theme-btn").forEach(btn => {
@@ -609,13 +679,51 @@
       
       // 添加鍵盤事件監聽器
       document.addEventListener('keydown', function(e) {
-      if (e.code === 'Space') {
-        e.preventDefault(); // 防止空白鍵觸發頁面滾動
-        togglePlayPause(); // 執行播放/暫停功能
-      }
-    });
+        if (e.code === 'Space') {
+          e.preventDefault(); // 防止空白鍵觸發頁面滾動
+          togglePlayPause(); // 執行播放/暫停功能
+        }
+      });
 
-        document.getElementById("particleSize").addEventListener("input", function (e) {
+      // 監聽低音增益滑桿
+      document.getElementById("bassGain").addEventListener("input", function (e) {
+        const gain = parseFloat(e.target.value);
+        eq.bands[0].gain(gain); // 設置低音頻段的增益
+        document.getElementById("bassGainValue").textContent = gain; // 更新顯示的值
+      });
+
+      // 監聽中音增益滑桿
+      document.getElementById("midGain").addEventListener("input", function (e) {
+        const gain = parseFloat(e.target.value);
+        eq.bands[1].gain(gain); // 設置中音頻段的增益
+        document.getElementById("midGainValue").textContent = gain;
+      });
+
+      // 監聽高音增益滑桿
+      document.getElementById("trebleGain").addEventListener("input", function (e) {
+        const gain = parseFloat(e.target.value);
+        eq.bands[2].gain(gain); // 設置高音頻段的增益
+        document.getElementById("trebleGainValue").textContent = gain;
+      });
+
+      document.getElementById("resetGainBtn").addEventListener("click", function () {
+        // 重置低音增益
+        document.getElementById("bassGain").value = 0;
+        document.getElementById("bassGainValue").textContent = 0;
+        eq.bands[0].gain(0);
+      
+        // 重置中音增益
+        document.getElementById("midGain").value = 0;
+        document.getElementById("midGainValue").textContent = 0;
+        eq.bands[1].gain(0);
+      
+        // 重置高音增益
+        document.getElementById("trebleGain").value = 0;
+        document.getElementById("trebleGainValue").textContent = 0;
+        eq.bands[2].gain(0);
+      });
+
+      document.getElementById("particleSize").addEventListener("input", function (e) {
       const newSize = parseInt(e.target.value, 10);
       document.getElementById("particleSizeValue").textContent = newSize;
     
@@ -739,13 +847,43 @@
       fill(themes[theme].primary);
       text(inputText, width / 2, height / 2);
       
-      // 繪製頻譜
-      noStroke();
-      for (let i = 0; i < spectrum.length; i += 10) {
-        let amp = spectrum[i];
-        let y = map(amp, 0, 255, height, height - 200);
-        fill(themes[theme].primary);
-        rect(i * 2, y, 8, height - y);
+      // 音樂可視化的多樣化
+      if (visualizationMode === "bars") {
+        // 繪製頻譜條
+        noStroke();
+        for (let i = 0; i < spectrum.length; i += 10) {
+          let amp = spectrum[i];
+          let y = map(amp, 0, 255, height, height - 200);
+          fill(themes[theme].primary);
+          rect(i * 2, y, 8, height - y);
+        }
+      } else if (visualizationMode === "circle") {
+        // 繪製圓形頻譜
+        noFill();
+        stroke(themes[theme].primary);
+        strokeWeight(2);
+        beginShape();
+        for (let i = 0; i < spectrum.length; i++) {
+          let angle = map(i, 0, spectrum.length, 0, TWO_PI);
+          let radius = map(spectrum[i], 0, 255, 100, 300);
+          let x = width / 2 + cos(angle) * radius;
+          let y = height / 2 + sin(angle) * radius;
+          vertex(x, y);
+        }
+        endShape(CLOSE);
+      } else if (visualizationMode === "waveform") {
+        // 繪製波形
+        let waveform = fft.waveform();
+        noFill();
+        stroke(themes[theme].primary);
+        strokeWeight(2);
+        beginShape();
+        for (let i = 0; i < waveform.length; i++) {
+          let x = map(i, 0, waveform.length, 0, width);
+          let y = map(waveform[i], -1, 1, height, 0);
+          vertex(x, y);
+        }
+        endShape();
       }
       
       // 清理過期的爆炸效果
@@ -973,6 +1111,12 @@
         sound.play();
         document.getElementById("playPauseBtn").textContent = "❚❚";
         fft.setInput(sound);
+
+        // 將音頻輸入連接到均衡器
+        sound.disconnect();
+        sound.connect(eq);
+
+        fft.setInput(eq); // 確保 FFT 分析器連接到均衡器
         
         // 開始更新進度條
         seekInterval = setInterval(updateProgressBar, 200);
@@ -1052,6 +1196,7 @@
 
     function windowResized() {
       resizeCanvas(windowWidth, windowHeight);
+      createParticles(particleCount);
     }
 
     function mousePressed() {
@@ -1069,11 +1214,15 @@
     function toggleFullscreen() {
       if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen().catch(err => {
+          console.error("Fullscreen error:", err);
           alert(`全屏錯誤: ${err.message}`);
         });
       } else {
         if (document.exitFullscreen) {
-          document.exitFullscreen();
+          document.exitFullscreen().catch(err => {
+            console.error("Exit fullscreen error:", err);
+            alert(`退出全屏錯誤: ${err.message}`);
+          });
         }
       }
     }
